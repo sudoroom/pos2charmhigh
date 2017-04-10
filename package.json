@@ -1,0 +1,31 @@
+{
+  "name": "pos2charmhigh",
+  "version": "1.0.0",
+  "description": "Translates KiCAD .pos files to Charmhigh CSV",
+  "main": "index.js",
+  "scripts": {
+    "test": "tape test/test.js"
+  },
+  "bin": {
+    "pos2csv": "./bin/cmd.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@gitlab.com/morganrallen/pos2charmhigh.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://gitlab.com/morganrallen/pos2charmhigh/issues"
+  },
+  "homepage": "https://gitlab.com/morganrallen/pos2charmhigh#README",
+  "dependencies": {
+    "async": "^2.3.0",
+    "fast-csv": "^2.4.0",
+    "minimist": "^1.2.0",
+    "through2": "^2.0.3"
+  },
+  "devDependencies": {
+    "tape": "^4.6.3"
+  }
+}
