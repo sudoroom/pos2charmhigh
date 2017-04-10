@@ -22,7 +22,7 @@ cp.stderr.on("data", function(d) {
 
 cp.on("close", function() {
   test(function(t) {
-    t.deepEqual(fs.readFileSync(output), fs.readFileSync(fixture), "output correct");
+    t.deepEqual(fs.readFileSync(output).toString(), fs.readFileSync(fixture).toString(), "output correct");
 
     t.end();
   });

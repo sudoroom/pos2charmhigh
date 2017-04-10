@@ -4,26 +4,66 @@ var fs = require("fs");
 var through = require("through2");
 
 module.exports = function(input, output, feedFile, opts) {
-  var data = "";
   async.waterfall([function(next) {
     var feeds = {};
+    var buf = "";
 
-    fs.createReadStream(feedFile).pipe(csv())
-      .on("data", function(data){
-        feeds[data[6]] = {
-          x: data[3],
-          y: data[4],
-          feed: data[5],
-          slot: data[2]
+    var section = -1;
+    var sections = [[], [], [], []];
+
+    console.log("processing sections");
+
+    fs.createReadStream(feedFile)
+      .on("data", function(data) {
+        buf += data.toString();
+
+        var lines = buf.split("\n");
+        buf = lines.pop();
+
+        for(var i = 0; i < lines.length; i++) {
+          let line = lines[i].replace(/[\r\n]+$/, "");
+
+          if(line.length === 0) continue;
+
+          if(line.slice(0, 2) === "%,") {
+            section++;
+
+            continue;
+          }
+
+          if(section === -1) { // input can be either just the CSV section or the entire pnp file
+            sections[1].push(line);
+          } else {
+            sections[section].push(line);
+          }
         }
       })
-    .on("end", function() {
-      next(null, feeds)
-    });
+      .on("end", function() {
+        next(null, sections);
+      })
+  }, function(sections, next) {
+    console.log("associating parts");
+
+    var components = [];
+    var len = sections[1].length;
+
+    for(var i = 0; i < len; i++) {
+      let section = sections[1][i].split(",");
+
+      components[section[6]] = {
+        x: section[3],
+        y: section[4],
+        feed: section[5],
+        slot: section[2]
+      }
+    }
+
+    next(null, components);
   }, function(feeds, next) {
     var rs = fs.createReadStream(input);
     var ws = fs.createWriteStream(output);
     var wsCsv = csv.createWriteStream();
+    var data = "";
     var seq = 0;
 
     var tr = through.obj(function(chunk, enc, done) {
@@ -50,14 +90,13 @@ module.exports = function(input, output, feedFile, opts) {
 
         var feed = feeds[p];
 
-        this.push([ 0, seq++, feed.slot, x, y, r ]);
+        this.push([ 0, seq++, feed.slot, x, y, r ].join(",") + "\n");
       };
 
       done();
     });
 
     rs.pipe(tr);
-    tr.pipe(wsCsv);
-    wsCsv.pipe(ws);
+    tr.pipe(ws);
   }]);
 }
