@@ -11,8 +11,6 @@ module.exports = function(input, output, feedFile, opts) {
     var section = -1;
     var sections = [[], [], [], []];
 
-    console.log("processing sections");
-
     fs.createReadStream(feedFile)
       .on("data", function(data) {
         buf += data.toString();
@@ -27,9 +25,9 @@ module.exports = function(input, output, feedFile, opts) {
 
           if(line.slice(0, 2) === "%,") {
             section++;
-
-            continue;
           }
+
+          if(section === 3 && sections[3].length > 0) continue;
 
           if(section === -1) { // input can be either just the CSV section or the entire pnp file
             sections[1].push(line);
@@ -42,8 +40,6 @@ module.exports = function(input, output, feedFile, opts) {
         next(null, sections);
       })
   }, function(sections, next) {
-    console.log("associating parts");
-
     var components = [];
     var len = sections[1].length;
 
@@ -58,15 +54,12 @@ module.exports = function(input, output, feedFile, opts) {
       }
     }
 
-    next(null, components);
-  }, function(feeds, next) {
-    var rs = fs.createReadStream(input);
-    var ws = fs.createWriteStream(output);
-    var wsCsv = csv.createWriteStream();
+    next(null, components, sections);
+  }, function(feeds, sections, next) {
     var data = "";
     var seq = 0;
 
-    var tr = through.obj(function(chunk, enc, done) {
+    var tr = through(function(chunk, enc, done) {
       data += chunk.toString();
 
       var lines = data.split("\n");
@@ -90,13 +83,25 @@ module.exports = function(input, output, feedFile, opts) {
 
         var feed = feeds[p];
 
-        this.push([ 0, seq++, feed.slot, x, y, r ].join(",") + "\n");
+        this.push([ 0, seq++, feed.slot, x, y, r, 0.50, 0, 100, null, null, null ].join(",") + "\n");
       };
 
       done();
     });
 
-    rs.pipe(tr);
-    tr.pipe(ws);
-  }]);
+    next(null, tr, sections);
+  }], function(err, tr, sections) {
+    var rs = fs.createReadStream(input);
+    var ws = fs.createWriteStream(output);
+
+    var i = 0;
+
+    async.forEachSeries(sections, function(section, next) {
+      ws.write(section.join("\n") + (++i < 4 ? "\n\n" : "\n"), next);
+    }, function() {
+      rs.pipe(tr);
+      tr.pipe(ws).on("close", function() {
+      });
+    });
+  });
 }
