@@ -1,6 +1,6 @@
 {
   "name": "pos2charmhigh",
-  "version": "1.2.0",
+  "version": "1.4.0",
   "description": "Translates KiCAD .pos files to Charmhigh CSV",
   "main": "index.js",
   "scripts": {
